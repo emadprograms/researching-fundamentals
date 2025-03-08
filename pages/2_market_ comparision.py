@@ -116,7 +116,8 @@ def get_eps_pe(tickers):
             name = f"{info.get('shortName', ticker)} ({ticker})"
             if eps is not None and pe is not None:
                 earnings_yield = 1 / pe if pe != 0 else None
-                data.append({'Ticker': ticker, 'EPS': eps, 'PE': pe, 'Earnings Yield': earnings_yield, 'Name': name})
+                # Use only the ticker for the x-axis label, but keep the full name for hover data
+                data.append({'Ticker': ticker, 'EPS': eps, 'PE': pe, 'Earnings Yield': earnings_yield, 'Name': ticker, 'FullName': name})
         except Exception as e:
             st.warning(f"Could not fetch EPS/PE for {ticker}: {e}")
     return pd.DataFrame(data)
@@ -135,13 +136,13 @@ if st.button("Get Similar Companies and Plot"):
         if not df.empty:
             col1, col2 = st.columns([1, 2])  # col1 takes 1/3, col2 takes 2/3 of the width
             with col1:
-                fig_eps = px.bar(df, x="Name", y="EPS", title="EPS Comparison")
+                fig_eps = px.bar(df, x="Ticker", y="EPS", title="EPS Comparison", hover_data=['FullName'])
                 st.plotly_chart(fig_eps, use_container_width=True)
 
-                fig_pe = px.bar(df, x="Name", y="PE", title="PE Ratio Comparison")
+                fig_pe = px.bar(df, x="Ticker", y="PE", title="PE Ratio Comparison", hover_data=['FullName'])
                 st.plotly_chart(fig_pe, use_container_width=True)
 
-                fig_ey = px.bar(df, x="Name", y="Earnings Yield", title="Earnings Yield Comparison")
+                fig_ey = px.bar(df, x="Ticker", y="Earnings Yield", title="Earnings Yield Comparison", hover_data=['FullName'])
                 st.plotly_chart(fig_ey, use_container_width=True)
         else:
             st.warning("Could not retrieve EPS/PE data for the selected companies.")
