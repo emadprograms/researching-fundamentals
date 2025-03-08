@@ -105,7 +105,7 @@ def get_similar_companies(ticker, num_similar=10):
 @st.cache_data
 def get_eps_pe(tickers):
     """
-    Fetches EPS and P/E data for the given tickers.
+    Fetches EPS, P/E, RPS, PS, and Revenue Yield data for the given tickers.
     """
     data = []
     for ticker in tickers:
@@ -113,13 +113,31 @@ def get_eps_pe(tickers):
             info = yf.Ticker(ticker).info
             eps = info.get('trailingEps', None)
             pe = info.get('trailingPE', None)
+            revenue = info.get('totalRevenue', None)
+            shares_outstanding = info.get('sharesOutstanding', None)
+            market_cap = info.get('marketCap', None)
+
             name = f"{info.get('shortName', ticker)} ({ticker})"
-            if eps is not None and pe is not None:
+
+            if eps is not None and pe is not None and revenue is not None and shares_outstanding is not None and market_cap is not None:
+                rps = revenue / shares_outstanding if shares_outstanding != 0 else None
+                ps = market_cap / revenue if revenue != 0 else None
+                revenue_yield = revenue / market_cap if market_cap != 0 else None
                 earnings_yield = 1 / pe if pe != 0 else None
-                # Use only the ticker for the x-axis label, but keep the full name for hover data
-                data.append({'Ticker': ticker, 'EPS': eps, 'PE': pe, 'Earnings Yield': earnings_yield, 'Name': ticker, 'FullName': name})
+
+                data.append({
+                    'Ticker': ticker,
+                    'EPS': eps,
+                    'PE': pe,
+                    'RPS': rps,
+                    'PS': ps,
+                    'Revenue Yield': revenue_yield,
+                    'Earnings Yield': earnings_yield,
+                    'Name': ticker,  # Use ticker for x-axis label
+                    'FullName': name  # Use full name for hover data
+                })
         except Exception as e:
-            st.warning(f"Could not fetch EPS/PE for {ticker}: {e}")
+            st.warning(f"Could not fetch data for {ticker}: {e}")
     return pd.DataFrame(data)
 
 st.title("Company Comparison")
@@ -134,7 +152,7 @@ if st.button("Get Similar Companies and Plot"):
         df = get_eps_pe(all_tickers)
 
         if not df.empty:
-            col1, col2 = st.columns([1, 2])  # col1 takes 1/3, col2 takes 2/3 of the width
+            col1, col2, col3 = st.columns([1, 0.5, 1])  # col1 takes 1/3, col2 takes 2/3 of the width
             with col1:
                 fig_eps = px.bar(df, x="Ticker", y="EPS", title="EPS Comparison", hover_data=['FullName'])
                 st.plotly_chart(fig_eps, use_container_width=True)
@@ -144,7 +162,17 @@ if st.button("Get Similar Companies and Plot"):
 
                 fig_ey = px.bar(df, x="Ticker", y="Earnings Yield", title="Earnings Yield Comparison", hover_data=['FullName'])
                 st.plotly_chart(fig_ey, use_container_width=True)
+
+            with col3:
+                fig_rps = px.bar(df, x="Ticker", y="RPS", title="RPS Comparison", hover_data=['FullName'])
+                st.plotly_chart(fig_rps, use_container_width=True)
+
+                fig_ps = px.bar(df, x="Ticker", y="PS", title="P/S Ratio Comparison", hover_data=['FullName'])
+                st.plotly_chart(fig_ps, use_container_width=True)
+
+                fig_revenue_yield = px.bar(df, x="Ticker", y="Revenue Yield", title="Revenue Yield Comparison", hover_data=['FullName'])
+                st.plotly_chart(fig_revenue_yield, use_container_width=True)
         else:
-            st.warning("Could not retrieve EPS/PE data for the selected companies.")
+            st.warning("Could not retrieve data for the selected companies.")
     else:
         st.warning("Could not find similar companies or retrieve company descriptions.")
